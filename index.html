@@ -557,20 +557,6 @@
 </head>
 <body>
 
-<!-- ── Live Server modal (shown when file:// detected) ── -->
-<div class="ls-overlay" id="lsOverlay" style="display:none">
-  <div class="ls-modal">
-    <button class="ls-x" onclick="document.getElementById('lsOverlay').style.display='none'">✕</button>
-    <h2>One quick setup to enable Claude AI Summaries</h2>
-    <p>Your browser blocks API calls when a page is opened as a local file. Follow these 3 steps once — then AI summaries work forever.</p>
-    <ol class="ls-steps">
-      <li><span class="ls-num">1</span><span>In VS Code, press <strong>Ctrl + Shift + X</strong> to open Extensions.</span></li>
-      <li><span class="ls-num">2</span><span>Search <strong>"Live Server"</strong> by Ritwick Dey and click <strong>Install</strong>.</span></li>
-      <li><span class="ls-num">3</span><span>Right-click <strong>index.html</strong> in the file explorer on the left → click <strong>"Open with Live Server"</strong>. Done!</span></li>
-    </ol>
-    <button class="ls-close" onclick="document.getElementById('lsOverlay').style.display='none'">Got it — I'll set it up</button>
-  </div>
-</div>
 
 <!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
 <header>
@@ -611,12 +597,6 @@
     </p>
 
     <div class="settings-field">
-      <label>Anthropic API Key</label>
-      <input id="set-anthropic" type="password" placeholder="sk-ant-api03-…" autocomplete="off" />
-      <span class="field-hint">Used for Claude AI Summaries. Get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></span>
-    </div>
-
-    <div class="settings-field">
       <label>Finnhub API Key</label>
       <input id="set-finnhub" type="password" placeholder="d792mbpr01…" autocomplete="off" />
       <span class="field-hint">Used for live financial news. Free tier at <a href="https://finnhub.io" target="_blank" style="color:var(--accent)">finnhub.io</a></span>
@@ -651,17 +631,6 @@
 <!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
 <main>
 
-  <div class="notice" id="corsNotice">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-    <span>
-      <strong>Claude AI Summary note:</strong> Browsers block direct calls to the Anthropic API for security reasons (CORS policy).
-      The "AI Summary" button will work once you add your API keys and run this through a small backend proxy.
-      Everything else — news fetching, search, filters — works entirely in the browser.
-    </span>
-  </div>
-
   <div class="status-bar">
     <span class="live-dot" id="statusText">Loading news…</span>
     <span id="countText"></span>
@@ -673,15 +642,13 @@
 <!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
 <script>
   // ─── API Keys — read once from localStorage at page load ─────────────────────
-  const FINNHUB_KEY   = localStorage.getItem('finnhubKey')   || '';
-  const NEWSAPI_KEY   = localStorage.getItem('newsapiKey')   || '';
-  const ANTHROPIC_KEY = localStorage.getItem('anthropicKey') || '';
+  const FINNHUB_KEY = localStorage.getItem('finnhubKey') || '';
+  const NEWSAPI_KEY = localStorage.getItem('newsapiKey') || '';
 
   // ─── Settings modal ───────────────────────────────────────────────────────────
   function openSettings() {
-    document.getElementById('set-anthropic').value = localStorage.getItem('anthropicKey') || '';
-    document.getElementById('set-finnhub').value   = localStorage.getItem('finnhubKey')   || '';
-    document.getElementById('set-newsapi').value   = localStorage.getItem('newsapiKey')   || '';
+    document.getElementById('set-finnhub').value = localStorage.getItem('finnhubKey') || '';
+    document.getElementById('set-newsapi').value = localStorage.getItem('newsapiKey') || '';
     document.getElementById('settingsOverlay').style.display = 'flex';
   }
 
@@ -690,24 +657,20 @@
   }
 
   function saveSettings() {
-    const anthropic = document.getElementById('set-anthropic').value.trim();
-    const finnhub   = document.getElementById('set-finnhub').value.trim();
-    const newsapi   = document.getElementById('set-newsapi').value.trim();
+    const finnhub = document.getElementById('set-finnhub').value.trim();
+    const newsapi = document.getElementById('set-newsapi').value.trim();
 
-    if (anthropic) localStorage.setItem('anthropicKey', anthropic);
-    else           localStorage.removeItem('anthropicKey');
+    if (finnhub) localStorage.setItem('finnhubKey', finnhub);
+    else         localStorage.removeItem('finnhubKey');
 
-    if (finnhub)   localStorage.setItem('finnhubKey', finnhub);
-    else           localStorage.removeItem('finnhubKey');
-
-    if (newsapi)   localStorage.setItem('newsapiKey', newsapi);
-    else           localStorage.removeItem('newsapiKey');
+    if (newsapi) localStorage.setItem('newsapiKey', newsapi);
+    else         localStorage.removeItem('newsapiKey');
 
     // Reload so the new constants are picked up from localStorage
     window.location.reload();
   }
 
-  // Close on Escape (only if keys are already saved — don't let user escape on first run)
+  // Close on Escape only if keys are already saved (block escape on first-run)
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && FINNHUB_KEY && NEWSAPI_KEY) closeSettings();
   });
@@ -989,17 +952,6 @@
             <h2 class="card-headline">${headline}</h2>
             <p class="card-summary">${summary}</p>
 
-            <div class="ai-summary" id="ai-${id}">
-              <div class="ai-summary-header">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2a7 7 0 0 1 7 7c0 3-1.5 5.5-4 6.7V18H9v-2.3C6.5 14.5 5 12 5 9a7 7 0 0 1 7-7z"/>
-                  <line x1="9" y1="22" x2="15" y2="22"/>
-                </svg>
-                Claude AI Explanation
-              </div>
-              <div id="ai-text-${id}">Generating simple explanation…</div>
-            </div>
-
             <div class="card-actions">
               <a class="btn-read" href="${url}" target="_blank" rel="noopener noreferrer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1008,14 +960,13 @@
                 </svg>
                 Read more
               </a>
-              <button class="btn-ai" id="ai-btn-${id}"
-                onclick="getAISummary('${id}', ${JSON.stringify(headline).replace(/'/g, "\\'")} , ${JSON.stringify(summary).replace(/'/g, "\\'")})">
+              <a class="btn-ai" href="${escHtml(buildClaudeUrl(a.headline, a.summary))}" target="_blank" rel="noopener noreferrer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 2a7 7 0 0 1 7 7c0 3-1.5 5.5-4 6.7V18H9v-2.3C6.5 14.5 5 12 5 9a7 7 0 0 1 7-7z"/>
                   <line x1="9" y1="22" x2="15" y2="22"/>
                 </svg>
                 Claude AI Summary
-              </button>
+              </a>
             </div>
           </div>
         </div>`;
@@ -1091,72 +1042,10 @@
     }
   }
 
-  // ─── Claude AI Summary ────────────────────────────────────────────────────────
-  async function getAISummary(cardId, headline, summary) {
-    const aiBox = document.getElementById(`ai-${cardId}`);
-    const aiTxt = document.getElementById(`ai-text-${cardId}`);
-    const aiBtn = document.getElementById(`ai-btn-${cardId}`);
-
-    // Toggle off if already showing
-    if (aiBox.classList.contains('visible')) {
-      aiBox.classList.remove('visible');
-      return;
-    }
-
-    // ── file:// protocol check ──────────────────────────────────────────────────
-    if (location.protocol === 'file:') {
-      document.getElementById('lsOverlay').style.display = 'flex';
-      return;
-    }
-
-    // Reset any previous error styling
-    aiBox.style.borderColor = '';
-    aiBox.style.background  = '';
-    aiBox.classList.add('visible');
-    aiBtn.disabled = true;
-    aiBtn.classList.add('loading');
-    aiTxt.textContent = 'Generating simple explanation…';
-
-    const prompt = `You are a friendly financial news explainer. A person with no finance background wants to understand this news article. Explain it in 3–4 short, plain sentences. Avoid jargon. Start with the key takeaway.\n\nHeadline: ${headline}\nSummary: ${summary}`;
-
-    try {
-      const res = await fetch('https://corsproxy.io/?https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type':                                  'application/json',
-          'x-api-key':                                     ANTHROPIC_KEY,
-          'anthropic-version':                             '2023-06-01',
-          'anthropic-dangerous-direct-browser-access':      'true'
-        },
-        body: JSON.stringify({
-          model:      'claude-3-5-haiku-20241022',
-          max_tokens: 300,
-          messages:   [{ role: 'user', content: prompt }]
-        })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      aiTxt.textContent = data.content?.[0]?.text ?? 'No explanation returned.';
-    } catch (err) {
-      // Make the error impossible to miss
-      aiBox.style.borderColor = '#ff4d6d';
-      aiBox.style.background  = 'rgba(255,77,109,.08)';
-      aiTxt.innerHTML =
-        `<strong style="color:#ff4d6d">⚠ Could not generate summary</strong><br><br>` +
-        `<span style="color:#fca5a5;font-size:.8rem">${escHtml(err.message)}</span><br><br>` +
-        `<span style="color:var(--muted);font-size:.75rem">` +
-        `Common causes: invalid API key, or key has no access to this model.<br>` +
-        `Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:#ff4d6d">console.anthropic.com</a>` +
-        `</span>`;
-    } finally {
-      aiBtn.disabled = false;
-      aiBtn.classList.remove('loading');
-    }
+  // ─── Claude AI Summary — opens claude.ai with the article pre-loaded ────────
+  function buildClaudeUrl(headline, summary) {
+    const prompt = `Please summarize this financial news in simple terms for someone with no finance background:\n\n${headline}\n\n${summary}`;
+    return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
   }
 
   // ─── Event Listeners ──────────────────────────────────────────────────────────
@@ -1184,7 +1073,7 @@
   });
 
   // ─── Boot ─────────────────────────────────────────────────────────────────────
-  if (!FINNHUB_KEY || !NEWSAPI_KEY || !ANTHROPIC_KEY) {
+  if (!FINNHUB_KEY || !NEWSAPI_KEY) {
     // Keys missing — show settings modal before attempting any fetch
     openSettings();
   } else {
