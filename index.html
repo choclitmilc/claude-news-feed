@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial News Feed</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:    #00d4aa;
+      --accent-dim:#00a688;
+      --bg:        #0d0f14;
+      --bg2:       #161a22;
+      --bg3:       #1e2330;
+      --border:    #2a2f3d;
+      --text:      #e2e8f0;
+      --muted:     #8892a4;
+      --red:       #ff4d6d;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .logo svg { width: 28px; height: 28px; flex-shrink: 0; }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: .75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    #searchInput {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .9rem;
+      padding: .55rem .75rem .55rem 2.2rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    #searchInput:focus { border-color: var(--accent); }
+    #searchInput::placeholder { color: var(--muted); }
+
+    .refresh-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      padding: .55rem 1rem;
+      white-space: nowrap;
+      transition: background .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .refresh-btn:hover { background: var(--accent-dim); }
+    .refresh-btn:active { transform: scale(.97); }
+    .refresh-btn svg { width: 15px; height: 15px; }
+    .refresh-btn.loading svg { animation: spin .7s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Categories ── */
+    .categories {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: .6rem 1.5rem;
+    }
+
+    .categories-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .cat-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 500;
+      padding: .35rem .9rem;
+      transition: all .2s;
+    }
+
+    .cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .cat-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 700;
+    }
+
+    /* ── Main ── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      font-size: .82rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .live-dot::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.8); }
+    }
+
+    /* ── Grid ── */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: border-color .25s, transform .2s, box-shadow .25s;
+      animation: fadeUp .35s ease both;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,212,170,.12);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-image {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      background: var(--bg3);
+      display: block;
+    }
+
+    .card-image-placeholder {
+      width: 100%;
+      height: 160px;
+      background: linear-gradient(135deg, var(--bg3) 0%, #1a2035 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--border);
+    }
+
+    .card-image-placeholder svg { width: 48px; height: 48px; }
+
+    .card-body {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: .6rem;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .75rem;
+      color: var(--muted);
+      gap: .5rem;
+    }
+
+    .card-source {
+      background: var(--bg3);
+      border-radius: 4px;
+      font-weight: 600;
+      padding: .15rem .45rem;
+      color: var(--accent);
+      font-size: .72rem;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-headline {
+      font-size: .97rem;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .card-summary {
+      font-size: .83rem;
+      color: var(--muted);
+      line-height: 1.6;
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+      margin-top: .25rem;
+    }
+
+    .btn-read {
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: .78rem;
+      font-weight: 600;
+      padding: .4rem .8rem;
+      text-decoration: none;
+      transition: background .2s, color .2s;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+    }
+
+    .btn-read:hover { background: var(--accent); color: #000; }
+    .btn-read svg   { width: 12px; height: 12px; }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #2d1b69, #1a2550);
+      border: 1px solid #6c3fc7;
+      border-radius: 6px;
+      color: #c4b5fd;
+      cursor: pointer;
+      font-size: .78rem;
+      font-weight: 600;
+      padding: .4rem .8rem;
+      transition: all .2s;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .btn-ai:hover { background: linear-gradient(135deg, #3d2580, #223068); border-color: #9c6ff7; }
+    .btn-ai:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-ai svg { width: 13px; height: 13px; }
+    .btn-ai.loading svg { animation: spin .7s linear infinite; }
+
+    /* ── AI Summary box ── */
+    .ai-summary {
+      background: linear-gradient(135deg, rgba(45,27,105,.25), rgba(26,37,80,.25));
+      border: 1px solid #4a2d9a;
+      border-radius: 8px;
+      font-size: .82rem;
+      line-height: 1.65;
+      padding: .75rem;
+      color: #d8b4fe;
+      display: none;
+      animation: fadeIn .3s ease;
+    }
+
+    .ai-summary.visible { display: block; }
+
+    .ai-summary-header {
+      color: #c4b5fd;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      margin-bottom: .4rem;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .ai-summary-header svg { width: 12px; height: 12px; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scaleY(.95); }
+      to   { opacity: 1; transform: scaleY(1); }
+    }
+
+    /* ── Skeleton loader ── */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .skeleton-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .skeleton-img  { width: 100%; height: 160px; background: var(--bg3); }
+    .skeleton-body { padding: 1rem; display: flex; flex-direction: column; gap: .7rem; }
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--bg3) 25%, #242840 50%, var(--bg3) 75%);
+      background-size: 200% 100%;
+      border-radius: 4px;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── Empty / Error state ── */
+    .state-box {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--muted);
+    }
+
+    .state-box svg { width: 56px; height: 56px; margin-bottom: 1rem; opacity: .4; }
+    .state-box h3  { font-size: 1.1rem; margin-bottom: .5rem; color: var(--text); }
+    .state-box p   { font-size: .85rem; max-width: 380px; margin: 0 auto; }
+
+    /* ── CORS notice banner ── */
+    .notice {
+      background: rgba(108,63,199,.15);
+      border: 1px solid rgba(108,63,199,.4);
+      border-radius: 8px;
+      font-size: .8rem;
+      color: #c4b5fd;
+      padding: .65rem 1rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      line-height: 1.5;
+    }
+
+    .notice svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: .05rem; }
+    .notice strong { color: #e9d5ff; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      header { padding: .75rem 1rem; }
+      .header-inner { gap: .6rem; }
+      .logo span { display: none; }
+      main { padding: 1rem; }
+      .news-grid, .skeleton-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Live-Server modal ── */
+    .ls-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+      animation: fadeIn .25s ease;
+    }
+    .ls-modal {
+      background: var(--bg2);
+      border: 1px solid #4a2d9a;
+      border-radius: 16px;
+      max-width: 480px;
+      width: calc(100% - 2rem);
+      padding: 2rem;
+      position: relative;
+    }
+    .ls-modal h2 { font-size: 1.1rem; color: #e9d5ff; margin-bottom: .4rem; }
+    .ls-modal p  { font-size: .85rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.2rem; }
+    .ls-steps    { list-style: none; display: flex; flex-direction: column; gap: .7rem; margin-bottom: 1.4rem; }
+    .ls-steps li {
+      background: var(--bg3); border-radius: 8px; padding: .7rem .9rem;
+      font-size: .83rem; color: var(--text); display: flex; align-items: flex-start; gap: .65rem;
+    }
+    .ls-num {
+      background: var(--accent); color: #000; border-radius: 50%;
+      width: 20px; height: 20px; font-size: .7rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .05rem;
+    }
+    .ls-close {
+      width: 100%; background: var(--accent); border: none; border-radius: 8px;
+      color: #000; font-size: .88rem; font-weight: 700; padding: .65rem;
+      cursor: pointer; transition: background .2s;
+    }
+    .ls-close:hover { background: var(--accent-dim); }
+    .ls-x {
+      position: absolute; top: 1rem; right: 1rem;
+      background: transparent; border: none; color: var(--muted);
+      font-size: 1.2rem; cursor: pointer; line-height: 1;
+    }
+    .ls-x:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- ── Live Server modal (shown when file:// detected) ── -->
+<div class="ls-overlay" id="lsOverlay" style="display:none">
+  <div class="ls-modal">
+    <button class="ls-x" onclick="document.getElementById('lsOverlay').style.display='none'">✕</button>
+    <h2>One quick setup to enable Claude AI Summaries</h2>
+    <p>Your browser blocks API calls when a page is opened as a local file. Follow these 3 steps once — then AI summaries work forever.</p>
+    <ol class="ls-steps">
+      <li><span class="ls-num">1</span><span>In VS Code, press <strong>Ctrl + Shift + X</strong> to open Extensions.</span></li>
+      <li><span class="ls-num">2</span><span>Search <strong>"Live Server"</strong> by Ritwick Dey and click <strong>Install</strong>.</span></li>
+      <li><span class="ls-num">3</span><span>Right-click <strong>index.html</strong> in the file explorer on the left → click <strong>"Open with Live Server"</strong>. Done!</span></li>
+    </ol>
+    <button class="ls-close" onclick="document.getElementById('lsOverlay').style.display='none'">Got it — I'll set it up</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+        <polyline points="16 7 22 7 22 13"/>
+      </svg>
+      <span>FinanceFeed</span>
+    </a>
+
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="searchInput" type="text" placeholder="Search headlines…" autocomplete="off" />
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn" onclick="loadNews()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ CATEGORIES ═══════════════════════════ -->
+<div class="categories">
+  <div class="categories-inner" id="categoryBar">
+    <button class="cat-btn active" data-cat="general">General</button>
+    <button class="cat-btn" data-cat="stocks">Stocks</button>
+    <button class="cat-btn" data-cat="forex">Forex</button>
+    <button class="cat-btn" data-cat="crypto">Crypto</button>
+    <button class="cat-btn" data-cat="merger">Mergers</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<main>
+
+  <div class="notice" id="corsNotice">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>
+      <strong>Claude AI Summary note:</strong> Browsers block direct calls to the Anthropic API for security reasons (CORS policy).
+      The "AI Summary" button will work once you add your API keys and run this through a small backend proxy.
+      Everything else — news fetching, search, filters — works entirely in the browser.
+    </span>
+  </div>
+
+  <div class="status-bar">
+    <span class="live-dot" id="statusText">Loading news…</span>
+    <span id="countText"></span>
+  </div>
+
+  <div id="newsContainer" class="news-grid"></div>
+</main>
+
+<!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
+<script>
+  // ─── API Keys ────────────────────────────────────────────────────────────────
+  // Replace the placeholders below with your real keys before using.
+  const FINNHUB_KEY   = 'YOUR_FINNHUB_KEY_HERE';
+  const NEWSAPI_KEY   = 'YOUR_NEWSAPI_KEY_HERE';   // replace with your NewsAPI key
+  const ANTHROPIC_KEY = 'YOUR_ANTHROPIC_KEY_HERE';
+
+  // ─── State ───────────────────────────────────────────────────────────────────
+  let allArticles  = [];
+  let activeCategory = 'general';
+  let searchQuery    = '';
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  function timeAgo(unixSeconds) {
+    const diff = Math.floor(Date.now() / 1000) - unixSeconds;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  function escHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ─── Skeleton Loader ─────────────────────────────────────────────────────────
+  function showSkeletons(n = 9) {
+    const container = document.getElementById('newsContainer');
+    container.className = 'skeleton-grid';
+    container.innerHTML = Array.from({ length: n }, () => `
+      <div class="skeleton-card">
+        <div class="skeleton-img"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line" style="height:12px;width:40%"></div>
+          <div class="skeleton-line" style="height:16px;width:90%"></div>
+          <div class="skeleton-line" style="height:16px;width:75%"></div>
+          <div class="skeleton-line" style="height:12px;width:60%"></div>
+          <div class="skeleton-line" style="height:12px;width:50%"></div>
+          <div class="skeleton-line" style="height:32px;width:100%;border-radius:6px"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ─── Demo / fallback data ─────────────────────────────────────────────────────
+  // gNews → Google News search for a headline so Read More lands on a real article
+  // lf → loremflickr: free, topic-matched real photos, no API key required
+  const lf = kw => `https://loremflickr.com/640/360/${encodeURIComponent(kw)}`;
+
+  const DEMO_DATA = {
+    general: [
+      { headline: 'Fed Signals Pause on Rate Hikes as Inflation Cools',                  summary: 'Federal Reserve officials indicated they may hold interest rates steady at their next meeting after new data showed inflation falling closer to the 2% target. Markets rallied sharply on the news, with the S&P 500 climbing 1.4%.',                                                                                                    source: 'Reuters',         url: 'https://www.reuters.com/markets/us/',                              image: lf('federal+reserve,central+bank'),      datetime: Math.floor(Date.now()/1000) - 1800  },
+      { headline: 'Apple Reports Record Services Revenue, Beats Wall Street Estimates',  summary: "Apple's services segment, which includes the App Store, Apple Music, and iCloud, generated $24.2 billion in the latest quarter — a 14% year-over-year increase. The company also announced a $110 billion share buyback program.",                                                                                                   source: 'CNBC',            url: 'https://www.cnbc.com/technology/',                                 image: lf('apple,technology,iphone'),           datetime: Math.floor(Date.now()/1000) - 3600  },
+      { headline: 'U.S. Job Market Adds 272,000 Positions, Beating Forecasts',          summary: 'The American economy added more jobs than analysts expected last month, suggesting the labor market remains resilient despite higher borrowing costs. The unemployment rate ticked up slightly to 4.0%.',                                                                                                                              source: 'Bloomberg',       url: 'https://www.bloomberg.com/economics',                              image: lf('employment,jobs,office'),            datetime: Math.floor(Date.now()/1000) - 7200  },
+      { headline: 'Oil Prices Surge 3% on Middle East Supply Concerns',                 summary: 'Crude oil jumped after reports of potential disruption to shipping lanes in the Red Sea, raising fears about global supply. Brent crude rose above $90 a barrel for the first time in six weeks.',                                                                                                                                   source: 'Financial Times', url: 'https://www.ft.com/commodities',                                   image: lf('oil,petroleum,refinery'),            datetime: Math.floor(Date.now()/1000) - 10800 },
+      { headline: 'Warren Buffett Doubles Down on Japan Trading Houses',                 summary: "Berkshire Hathaway increased its stakes in five major Japanese trading conglomerates, signalling continued confidence in the country's corporate restructuring. Shares of all five companies jumped on the announcement.",                                                                                                             source: 'WSJ',             url: 'https://www.wsj.com/finance',                                      image: lf('tokyo,japan,finance'),               datetime: Math.floor(Date.now()/1000) - 14400 },
+      { headline: 'Treasury Yields Fall to Two-Month Low on Soft CPI Print',            summary: 'The yield on the 10-year U.S. Treasury note dropped to its lowest level since February after the Consumer Price Index rose less than expected, easing pressure on the Federal Reserve to keep rates elevated.',                                                                                                                       source: 'MarketWatch',     url: 'https://www.marketwatch.com/economy-politics/federal-reserve',    image: lf('bonds,treasury,finance'),            datetime: Math.floor(Date.now()/1000) - 18000 },
+      { headline: "Goldman Sachs Lifts S&P 500 Year-End Target to 5,600",               summary: 'Analysts at Goldman Sachs raised their forecast for the S&P 500 index, citing stronger-than-expected earnings growth and improving economic conditions. The bank now expects the index to end the year about 8% higher than current levels.',                                                                                         source: "Barron's",        url: 'https://www.barrons.com/market-data',                              image: lf('stock+market,wall+street,trading'),  datetime: Math.floor(Date.now()/1000) - 21600 },
+      { headline: 'Commercial Real Estate Stress Spills Into Regional Banks',            summary: 'Several regional lenders reported higher loan losses tied to struggling office buildings and shopping centres, reigniting concerns about the health of smaller banks. Shares of the affected banks fell between 5% and 12%.',                                                                                                          source: 'Reuters',         url: 'https://www.reuters.com/business/finance/',                        image: lf('office,building,skyscraper'),        datetime: Math.floor(Date.now()/1000) - 25200 },
+      { headline: "Nvidia Surpasses Microsoft as World's Most Valuable Company",         summary: "Chipmaker Nvidia briefly overtook Microsoft in market capitalisation, a milestone that underscores the extraordinary investor appetite for companies at the centre of the artificial intelligence boom. Nvidia's shares have risen over 150% this year.",                                                                              source: 'CNBC',            url: 'https://www.cnbc.com/technology/',                                 image: lf('nvidia,gpu,artificial+intelligence'), datetime: Math.floor(Date.now()/1000) - 28800 },
+    ],
+    forex: [
+      { headline: 'Dollar Index Drops as Traders Price In Two Fed Cuts This Year',       summary: 'The U.S. dollar weakened against a basket of major currencies after Federal Reserve minutes hinted at a more dovish policy path. The EUR/USD pair climbed back above 1.09 for the first time since March.',                                                                                                                          source: 'Reuters',         url: 'https://www.reuters.com/markets/currencies/',                      image: lf('dollar,currency,exchange'),          datetime: Math.floor(Date.now()/1000) - 2400  },
+      { headline: 'Japanese Yen Hits 34-Year Low Against Dollar Despite BOJ Warnings',   summary: "The yen fell through the 158-per-dollar level, its weakest since 1990, as a wide interest rate gap between Japan and the U.S. continued to pressure the currency. Japan's finance minister reiterated readiness to intervene.",                                                                                                      source: 'Bloomberg',       url: 'https://www.bloomberg.com/markets/currencies',                     image: lf('japan,yen,tokyo+finance'),           datetime: Math.floor(Date.now()/1000) - 5400  },
+      { headline: 'British Pound Rises as UK Inflation Stays Stickier Than Expected',    summary: 'Sterling strengthened after UK consumer prices rose more than forecast, pushing back expectations for a Bank of England rate cut. Cable (GBP/USD) rose 0.6% to 1.268.',                                                                                                                                                             source: 'Financial Times', url: 'https://www.ft.com/currencies',                                   image: lf('london,british,uk+finance'),         datetime: Math.floor(Date.now()/1000) - 9000  },
+      { headline: 'ECB Keeps Rates On Hold, Hints at June Cut',                          summary: 'The European Central Bank left its key deposit rate unchanged at 4% but signalled it could begin easing in June if inflation data continues to improve. The euro dipped briefly before recovering against the dollar.',                                                                                                              source: 'WSJ',             url: 'https://www.wsj.com/economy',                                      image: lf('europe,euro,frankfurt'),             datetime: Math.floor(Date.now()/1000) - 12600 },
+      { headline: 'Swiss Franc Weakens After SNB Surprises with Rate Cut',               summary: 'The Swiss National Bank became the first major central bank to cut rates this cycle, lowering its policy rate by 25 basis points. The Swiss franc fell over 1% against the euro and dollar in immediate reaction.',                                                                                                                  source: 'MarketWatch',     url: 'https://www.marketwatch.com/investing/currencies',                image: lf('switzerland,swiss,zurich'),          datetime: Math.floor(Date.now()/1000) - 16200 },
+    ],
+    crypto: [
+      { headline: 'Bitcoin Tops $70,000 as ETF Inflows Accelerate',                     summary: "Bitcoin surged past $70,000 for the first time since its all-time high, driven by record inflows into U.S.-listed spot bitcoin exchange-traded funds. BlackRock's IBIT ETF alone saw $849 million in single-day inflows.",                                                                                                          source: 'CoinDesk',        url: 'https://www.coindesk.com/markets/',                                image: lf('bitcoin,cryptocurrency,blockchain'), datetime: Math.floor(Date.now()/1000) - 1200  },
+      { headline: 'Ethereum Upgrade Reduces Transaction Fees by Up to 90%',             summary: 'The Dencun upgrade to the Ethereum network went live, dramatically cutting fees for "layer 2" applications that help scale the blockchain. Developers said the change makes small everyday transactions economically viable for the first time.',                                                                                      source: 'The Block',       url: 'https://www.theblock.co/latest',                                   image: lf('ethereum,blockchain,crypto'),        datetime: Math.floor(Date.now()/1000) - 4800  },
+      { headline: 'SEC Approves Spot Ether ETFs, Clearing Path for Trading',            summary: 'U.S. regulators approved the first spot Ether exchange-traded funds, a landmark decision that could bring a wave of institutional investment into the second-largest cryptocurrency. Ether jumped 10% on the news.',                                                                                                                 source: 'Bloomberg',       url: 'https://www.bloomberg.com/crypto',                                 image: lf('sec,regulation,cryptocurrency'),     datetime: Math.floor(Date.now()/1000) - 8400  },
+      { headline: 'Solana Network Processes Record 65 Million Transactions in a Day',   summary: 'The Solana blockchain set a new daily transaction record, highlighting growing developer and user activity on the network. SOL tokens rose 8% as analysts pointed to the data as a sign of real-world adoption.',                                                                                                                    source: 'Decrypt',         url: 'https://decrypt.co/news',                                          image: lf('solana,blockchain,digital'),         datetime: Math.floor(Date.now()/1000) - 12000 },
+      { headline: 'Crypto Exchange Kraken Expands into Stock Trading',                  summary: 'Kraken announced plans to offer traditional stock and ETF trading to its existing crypto customer base, competing directly with retail brokerages like Robinhood. The move reflects growing convergence between crypto and traditional finance.',                                                                                      source: 'Reuters',         url: 'https://www.reuters.com/technology/cryptocurrency/',              image: lf('crypto,exchange,trading+platform'),  datetime: Math.floor(Date.now()/1000) - 15600 },
+    ],
+    merger: [
+      { headline: 'Capital One Wins Approval for $35B Discover Financial Acquisition',  summary: "Regulators gave the green light to Capital One's takeover of Discover Financial Services, creating the largest U.S. credit card company by loan volume. The deal is expected to close within weeks after months of regulatory scrutiny.",                                                                                           source: 'WSJ',             url: 'https://www.wsj.com/business/deals',                               image: lf('credit+card,bank,finance'),          datetime: Math.floor(Date.now()/1000) - 3000  },
+      { headline: 'Sony and Apollo Make $26B Joint Bid for Paramount Global',           summary: "Sony Pictures and private equity firm Apollo Global Management have submitted a formal offer to acquire Paramount Global, setting up a potential bidding war with Skydance Media. Paramount's shares jumped 13% on the news.",                                                                                                        source: 'Bloomberg',       url: 'https://www.bloomberg.com/deals',                                  image: lf('hollywood,movie,entertainment'),     datetime: Math.floor(Date.now()/1000) - 7800  },
+      { headline: 'Synopsys-Ansys Merger Faces Deeper EU Antitrust Review',             summary: 'European regulators have opened a full investigation into the proposed $35 billion merger between chip design software makers Synopsys and Ansys, citing concerns the deal could reduce competition in key engineering tools markets.',                                                                                               source: 'Reuters',         url: 'https://www.reuters.com/business/deals/',                          image: lf('semiconductor,chip,microchip'),      datetime: Math.floor(Date.now()/1000) - 11400 },
+      { headline: 'BHP Drops $49B Anglo American Takeover Bid After Rejection',         summary: "Mining giant BHP walked away from its pursuit of Anglo American after the target's board rejected the offer three times. The failed bid highlighted rising consolidation pressure in the global mining sector amid strong copper demand.",                                                                                              source: 'Financial Times', url: 'https://www.ft.com/mergers-acquisitions',                         image: lf('mining,copper,industrial'),          datetime: Math.floor(Date.now()/1000) - 19200 },
+      { headline: 'Tapestry Abandons $8.5B Capri Holdings Acquisition',                 summary: "Fashion group Tapestry scrapped its plan to buy Versace and Michael Kors owner Capri Holdings after a U.S. judge ruled the deal would harm competition in the 'accessible luxury' handbag market.",                                                                                                                                 source: 'CNBC',            url: 'https://www.cnbc.com/mergers-and-acquisitions/',                   image: lf('fashion,luxury,handbag'),            datetime: Math.floor(Date.now()/1000) - 23400 },
+    ],
+  };
+
+  // ─── Category mappings ────────────────────────────────────────────────────────
+  // Finnhub uses: general | forex | crypto | merger
+  // NewsAPI uses: business | technology | general | science | health | sports | entertainment
+  const NEWSAPI_CATEGORY = {
+    general: 'business',
+    stocks:  'business',   // fallback — stocks uses /everything endpoint instead
+    forex:   'business',
+    crypto:  'technology',
+    merger:  'business',
+  };
+
+  // Extra keyword refinement per category so NewsAPI results are more relevant
+  const NEWSAPI_QUERY = {
+    forex:  'forex OR currency OR "exchange rate"',
+    crypto: 'crypto OR bitcoin OR ethereum OR blockchain',
+    merger: 'merger OR acquisition OR takeover OR "M&A"',
+  };
+
+  // ─── Fetch from Finnhub ───────────────────────────────────────────────────────
+  // Returns articles already in our internal shape: { headline, summary, source, url, image, datetime }
+  async function fetchFinnhub(category) {
+    // Finnhub doesn't have a 'stocks' category — use 'general' as the closest match
+    const finnhubCategory = category === 'stocks' ? 'general' : category;
+    const url = `https://finnhub.io/api/v1/news?category=${encodeURIComponent(finnhubCategory)}&token=${FINNHUB_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Finnhub ${res.status}`);
+    // Finnhub shape is already compatible; just rename fields
+    const raw = await res.json();
+    return raw.map(a => ({
+      headline: a.headline || '',
+      summary:  a.summary  || '',
+      source:   a.source   || 'Finnhub',
+      url:      a.url      || '',
+      image:    a.image    || '',
+      datetime: a.datetime || 0,
+    }));
+  }
+
+  // Financial-only outlets for the General tab
+  const GENERAL_SOURCES = 'bloomberg,financial-times,the-wall-street-journal,fortune,business-insider';
+
+  // Keywords that must appear in headline OR summary for an article to pass the finance filter
+  const FINANCE_KEYWORDS = [
+    'stock','market','economy','economic','finance','financial','invest','investor',
+    'bank','banking','interest rate','fed','federal reserve','inflation','gdp','debt',
+    'earnings','revenue','profit','loss','ipo','shares','equity','bond','treasury',
+    'trade','trading','fund','hedge','portfolio','dividend','valuation','acquisition',
+    'merger','takeover','nasdaq','s&p','dow','ftse','nyse','crypto','bitcoin','forex',
+    'currency','recession','growth','quarter','fiscal','budget','commodity','oil','gold',
+  ];
+
+  function isFinanceArticle(a) {
+    const text = `${a.headline} ${a.summary}`.toLowerCase();
+    return FINANCE_KEYWORDS.some(kw => text.includes(kw));
+  }
+
+  // ─── Fetch from NewsAPI ───────────────────────────────────────────────────────
+  async function fetchNewsAPI(category) {
+    let endpoint;
+
+    if (category === 'general') {
+      // Explicit financial-only source list
+      endpoint = `https://newsapi.org/v2/top-headlines?language=en&pageSize=50&apiKey=${NEWSAPI_KEY}&sources=${GENERAL_SOURCES}`;
+    } else if (category === 'stocks') {
+      // Trusted financial sources only + stock-specific query
+      const sources = 'bloomberg,the-wall-street-journal,financial-times,fortune,business-insider,reuters,cnbc';
+      const q       = 'stock OR earnings OR shares OR "market cap" OR NYSE OR NASDAQ OR "S&P"';
+      endpoint = `https://newsapi.org/v2/everything?language=en&sortBy=publishedAt&pageSize=50&apiKey=${NEWSAPI_KEY}&sources=${sources}&q=${encodeURIComponent(q)}`;
+    } else {
+      const apiCategory = NEWSAPI_CATEGORY[category] || 'business';
+      const query       = NEWSAPI_QUERY[category]    || '';
+      endpoint = `https://newsapi.org/v2/top-headlines?language=en&pageSize=50&apiKey=${NEWSAPI_KEY}&category=${apiCategory}`;
+      if (query) endpoint += `&q=${encodeURIComponent(query)}`;
+    }
+
+    const res = await fetch(endpoint);
+    if (!res.ok) throw new Error(`NewsAPI ${res.status}`);
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(`NewsAPI: ${data.message || 'unknown error'}`);
+
+    return (data.articles || [])
+      .filter(a => a.title && a.title !== '[Removed]' && a.url)
+      .map(a => ({
+        headline: a.title                || '',
+        summary:  a.description          || '',
+        source:   a.source?.name         || 'NewsAPI',
+        url:      a.url                  || '',
+        image:    a.urlToImage           || '',
+        datetime: a.publishedAt
+          ? Math.floor(new Date(a.publishedAt).getTime() / 1000)
+          : 0,
+      }));
+  }
+
+  // Terms that must appear in the HEADLINE for a Stocks article to pass
+  const STOCKS_HEADLINE_TERMS = [
+    'stock','stocks','share','shares','equity','equities','earnings','eps',
+    'nyse','nasdaq','s&p','dow','ftse','ipo','dividend','market cap',
+    'rally','selloff','sell-off','bull','bear','index','indices','ticker',
+    'quarterly results','revenue','profit','loss','upgrade','downgrade',
+    'wall street','trading','investor','portfolio','valuation',
+  ];
+
+  function isStocksHeadline(a) {
+    const h = (a.headline || '').toLowerCase();
+    return STOCKS_HEADLINE_TERMS.some(t => h.includes(t));
+  }
+
+  // ─── Fetch both APIs in parallel, merge, deduplicate, sort ───────────────────
+  async function fetchAllNews(category) {
+    // Stocks tab: skip Finnhub — use NewsAPI trusted financial sources only
+    const fetchers = category === 'stocks'
+      ? [fetchNewsAPI(category)]
+      : [fetchFinnhub(category), fetchNewsAPI(category)];
+
+    const results = await Promise.allSettled(fetchers);
+    let articles  = [];
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        articles.push(...result.value);
+      } else {
+        console.warn('Source failed:', result.reason?.message);
+      }
+    }
+
+    if (!articles.length) throw new Error('All sources failed to load');
+
+    // Stocks: require a market/stock term in the headline itself
+    if (category === 'stocks') {
+      articles = articles.filter(isStocksHeadline);
+    }
+
+    // General: drop anything not clearly about finance/markets
+    if (category === 'general') {
+      articles = articles.filter(isFinanceArticle);
+    }
+
+    // Deduplicate: first by exact URL, then by headline prefix (catches same story from two sources)
+    const seenUrls      = new Set();
+    const seenHeadlines = new Set();
+    articles = articles.filter(a => {
+      const urlKey      = (a.url      || '').toLowerCase().trim();
+      const headlineKey = (a.headline || '').toLowerCase().trim().slice(0, 72);
+      if (urlKey      && seenUrls.has(urlKey))           return false;
+      if (headlineKey && seenHeadlines.has(headlineKey)) return false;
+      if (urlKey)      seenUrls.add(urlKey);
+      if (headlineKey) seenHeadlines.add(headlineKey);
+      return true;
+    });
+
+    // Sort newest first
+    return articles.sort((a, b) => b.datetime - a.datetime);
+  }
+
+  // ─── Render Cards ─────────────────────────────────────────────────────────────
+  function renderArticles(articles) {
+    const container = document.getElementById('newsContainer');
+    container.className = 'news-grid';
+
+    if (!articles.length) {
+      container.innerHTML = `
+        <div class="state-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <h3>No results found</h3>
+          <p>Try adjusting your search terms or switching categories.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = articles.map((a, idx) => {
+      const id        = `card-${idx}`;
+      const headline  = escHtml(a.headline);
+      const summary   = escHtml(a.summary || 'No summary available.');
+      const source    = escHtml(a.source  || 'Unknown');
+      const timestamp = timeAgo(a.datetime);
+      const url       = escHtml(a.url || '#');
+      const imgHtml   = a.image
+        ? `<img class="card-image" src="${escHtml(a.image)}" alt="" loading="lazy" onerror="this.replaceWith(makePlaceholder())">`
+        : `<div class="card-image-placeholder">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+               <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+               <polyline points="21 15 16 10 5 21"/>
+             </svg>
+           </div>`;
+
+      return `
+        <div class="card" id="${id}">
+          ${imgHtml}
+          <div class="card-body">
+            <div class="card-meta">
+              <span class="card-source">${source}</span>
+              <span>${timestamp}</span>
+            </div>
+            <h2 class="card-headline">${headline}</h2>
+            <p class="card-summary">${summary}</p>
+
+            <div class="ai-summary" id="ai-${id}">
+              <div class="ai-summary-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a7 7 0 0 1 7 7c0 3-1.5 5.5-4 6.7V18H9v-2.3C6.5 14.5 5 12 5 9a7 7 0 0 1 7-7z"/>
+                  <line x1="9" y1="22" x2="15" y2="22"/>
+                </svg>
+                Claude AI Explanation
+              </div>
+              <div id="ai-text-${id}">Generating simple explanation…</div>
+            </div>
+
+            <div class="card-actions">
+              <a class="btn-read" href="${url}" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                Read more
+              </a>
+              <button class="btn-ai" id="ai-btn-${id}"
+                onclick="getAISummary('${id}', ${JSON.stringify(headline).replace(/'/g, "\\'")} , ${JSON.stringify(summary).replace(/'/g, "\\'")})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a7 7 0 0 1 7 7c0 3-1.5 5.5-4 6.7V18H9v-2.3C6.5 14.5 5 12 5 9a7 7 0 0 1 7-7z"/>
+                  <line x1="9" y1="22" x2="15" y2="22"/>
+                </svg>
+                Claude AI Summary
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Fallback placeholder element (called inline via onerror)
+  function makePlaceholder() {
+    const d = document.createElement('div');
+    d.className = 'card-image-placeholder';
+    d.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>`;
+    return d;
+  }
+
+  // ─── Filter logic ─────────────────────────────────────────────────────────────
+  function applyFilters() {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered = q
+      ? allArticles.filter(a =>
+          (a.headline || '').toLowerCase().includes(q) ||
+          (a.summary  || '').toLowerCase().includes(q) ||
+          (a.source   || '').toLowerCase().includes(q))
+      : allArticles;
+
+    document.getElementById('countText').textContent =
+      `${filtered.length} article${filtered.length !== 1 ? 's' : ''}`;
+    renderArticles(filtered);
+  }
+
+  // ─── Load news ───────────────────────────────────────────────────────────────
+  async function loadNews() {
+    const btn        = document.getElementById('refreshBtn');
+    const statusText = document.getElementById('statusText');
+    const countText  = document.getElementById('countText');
+
+    btn.classList.add('loading');
+    statusText.textContent = `Loading ${activeCategory} news…`;
+    countText.textContent  = '';
+    showSkeletons();
+
+    try {
+      allArticles = await fetchAllNews(activeCategory);
+
+      // Count unique outlet names that appear in the feed
+      const outlets = [...new Set(allArticles.map(a => a.source))];
+      statusText.innerHTML = `<span class="live-dot">Live · Finnhub + NewsAPI</span>`;
+      document.getElementById('countText').textContent =
+        `${allArticles.length} articles · ${outlets.length} outlets`;
+      applyFilters();
+    } catch (err) {
+      console.warn('Finnhub fetch failed, falling back to demo data:', err.message);
+      // Show a yellow warning banner in place of the CORS notice
+      const notice = document.getElementById('corsNotice');
+      notice.style.background    = 'rgba(234,179,8,.12)';
+      notice.style.borderColor   = 'rgba(234,179,8,.4)';
+      notice.style.color         = '#fde68a';
+      notice.querySelector('strong').style.color = '#fef08a';
+      notice.querySelector('strong').textContent = 'Demo mode:';
+      notice.querySelector('span').innerHTML =
+        `<strong style="color:#fef08a">Demo mode:</strong> All news sources failed to load (${escHtml(err.message)}). ` +
+        `Showing sample articles so you can preview the layout. Check your network connection or ` +
+        `<a href="https://finnhub.io" target="_blank" style="color:#fde68a">Finnhub API key</a>.`;
+
+      const demo = DEMO_DATA[activeCategory] ?? DEMO_DATA.general;
+      allArticles = demo;
+      statusText.innerHTML = '<span style="color:var(--muted)">Demo data</span>';
+      applyFilters();
+    } finally {
+      btn.classList.remove('loading');
+    }
+  }
+
+  // ─── Claude AI Summary ────────────────────────────────────────────────────────
+  async function getAISummary(cardId, headline, summary) {
+    const aiBox = document.getElementById(`ai-${cardId}`);
+    const aiTxt = document.getElementById(`ai-text-${cardId}`);
+    const aiBtn = document.getElementById(`ai-btn-${cardId}`);
+
+    // Toggle off if already showing
+    if (aiBox.classList.contains('visible')) {
+      aiBox.classList.remove('visible');
+      return;
+    }
+
+    // ── file:// protocol check ──────────────────────────────────────────────────
+    if (location.protocol === 'file:') {
+      document.getElementById('lsOverlay').style.display = 'flex';
+      return;
+    }
+
+    // Reset any previous error styling
+    aiBox.style.borderColor = '';
+    aiBox.style.background  = '';
+    aiBox.classList.add('visible');
+    aiBtn.disabled = true;
+    aiBtn.classList.add('loading');
+    aiTxt.textContent = 'Generating simple explanation…';
+
+    const prompt = `You are a friendly financial news explainer. A person with no finance background wants to understand this news article. Explain it in 3–4 short, plain sentences. Avoid jargon. Start with the key takeaway.\n\nHeadline: ${headline}\nSummary: ${summary}`;
+
+    try {
+      const res = await fetch('https://corsproxy.io/?https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type':                                  'application/json',
+          'x-api-key':                                     ANTHROPIC_KEY,
+          'anthropic-version':                             '2023-06-01',
+          'anthropic-dangerous-direct-browser-access':      'true'
+        },
+        body: JSON.stringify({
+          model:      'claude-3-5-haiku-20241022',
+          max_tokens: 300,
+          messages:   [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      aiTxt.textContent = data.content?.[0]?.text ?? 'No explanation returned.';
+    } catch (err) {
+      // Make the error impossible to miss
+      aiBox.style.borderColor = '#ff4d6d';
+      aiBox.style.background  = 'rgba(255,77,109,.08)';
+      aiTxt.innerHTML =
+        `<strong style="color:#ff4d6d">⚠ Could not generate summary</strong><br><br>` +
+        `<span style="color:#fca5a5;font-size:.8rem">${escHtml(err.message)}</span><br><br>` +
+        `<span style="color:var(--muted);font-size:.75rem">` +
+        `Common causes: invalid API key, or key has no access to this model.<br>` +
+        `Get a key at <a href="https://console.anthropic.com" target="_blank" style="color:#ff4d6d">console.anthropic.com</a>` +
+        `</span>`;
+    } finally {
+      aiBtn.disabled = false;
+      aiBtn.classList.remove('loading');
+    }
+  }
+
+  // ─── Event Listeners ──────────────────────────────────────────────────────────
+
+  // Category buttons
+  document.getElementById('categoryBar').addEventListener('click', e => {
+    const btn = e.target.closest('.cat-btn');
+    if (!btn) return;
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeCategory = btn.dataset.cat;
+    searchQuery    = '';
+    document.getElementById('searchInput').value = '';
+    loadNews();
+  });
+
+  // Search input (debounced)
+  let searchTimer;
+  document.getElementById('searchInput').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = e.target.value;
+      applyFilters();
+    }, 250);
+  });
+
+  // ─── Boot ─────────────────────────────────────────────────────────────────────
+  loadNews();
+</script>
+</body>
+</html>
