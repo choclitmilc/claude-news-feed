@@ -478,6 +478,81 @@
       font-size: 1.2rem; cursor: pointer; line-height: 1;
     }
     .ls-x:hover { color: var(--text); }
+
+    /* ── Settings modal ── */
+    .settings-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: .45rem .6rem;
+      transition: border-color .2s, color .2s;
+      flex-shrink: 0;
+    }
+    .settings-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .settings-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+      animation: fadeIn .2s ease;
+    }
+    .settings-modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 460px;
+      width: calc(100% - 2rem);
+      padding: 2rem;
+      position: relative;
+    }
+    .settings-modal h2 {
+      font-size: 1.1rem; font-weight: 700; color: var(--text);
+      margin-bottom: .35rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .settings-modal p.settings-sub {
+      font-size: .8rem; color: var(--muted); margin-bottom: 1.4rem; line-height: 1.5;
+    }
+    .settings-field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
+    .settings-field label {
+      font-size: .78rem; font-weight: 600; color: var(--accent); letter-spacing: .04em; text-transform: uppercase;
+    }
+    .settings-field input {
+      background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: .82rem; font-family: monospace;
+      padding: .55rem .75rem; outline: none; transition: border-color .2s; width: 100%;
+    }
+    .settings-field input:focus { border-color: var(--accent); }
+    .settings-field input::placeholder { color: var(--muted); font-family: inherit; }
+    .settings-field .field-hint {
+      font-size: .72rem; color: var(--muted); line-height: 1.4;
+    }
+    .settings-actions { display: flex; gap: .7rem; margin-top: 1.5rem; }
+    .btn-save-settings {
+      flex: 1; background: var(--accent); border: none; border-radius: 8px;
+      color: #000; font-size: .88rem; font-weight: 700; padding: .65rem;
+      cursor: pointer; transition: background .2s;
+    }
+    .btn-save-settings:hover { background: var(--accent-dim); }
+    .btn-cancel-settings {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--muted); font-size: .88rem; font-weight: 600; padding: .65rem 1.2rem;
+      cursor: pointer; transition: border-color .2s, color .2s;
+    }
+    .btn-cancel-settings:hover { border-color: var(--muted); color: var(--text); }
+    .settings-saved-toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #000; border-radius: 8px;
+      font-size: .85rem; font-weight: 700; padding: .6rem 1.4rem;
+      pointer-events: none; opacity: 0; transition: opacity .3s;
+      z-index: 1000; white-space: nowrap;
+    }
+    .settings-saved-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -522,8 +597,45 @@
       </svg>
       Refresh
     </button>
+
+    <button class="settings-btn" id="settingsBtn" title="Settings" onclick="openSettings()">⚙️</button>
   </div>
 </header>
+
+<!-- ── Settings modal ── -->
+<div class="settings-overlay" id="settingsOverlay" style="display:none" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-modal">
+    <h2>⚙️ API Key Settings</h2>
+    <p class="settings-sub">
+      Keys are saved only in <strong>your browser's localStorage</strong> — they never leave your device or get uploaded anywhere.
+    </p>
+
+    <div class="settings-field">
+      <label>Anthropic API Key</label>
+      <input id="set-anthropic" type="password" placeholder="sk-ant-api03-…" autocomplete="off" />
+      <span class="field-hint">Used for Claude AI Summaries. Get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></span>
+    </div>
+
+    <div class="settings-field">
+      <label>Finnhub API Key</label>
+      <input id="set-finnhub" type="password" placeholder="d792mbpr01…" autocomplete="off" />
+      <span class="field-hint">Used for live financial news. Free tier at <a href="https://finnhub.io" target="_blank" style="color:var(--accent)">finnhub.io</a></span>
+    </div>
+
+    <div class="settings-field">
+      <label>NewsAPI Key</label>
+      <input id="set-newsapi" type="password" placeholder="3225b73d8c…" autocomplete="off" />
+      <span class="field-hint">Used for multi-source news. Free tier at <a href="https://newsapi.org" target="_blank" style="color:var(--accent)">newsapi.org</a></span>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn-save-settings" onclick="saveSettings()">Save Settings</button>
+      <button class="btn-cancel-settings" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="settings-saved-toast" id="savedToast">✓ Settings saved</div>
 
 <!-- ═══════════════════════════ CATEGORIES ═══════════════════════════ -->
 <div class="categories">
@@ -560,11 +672,45 @@
 
 <!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
 <script>
-  // ─── API Keys ────────────────────────────────────────────────────────────────
-  // Replace the placeholders below with your real keys before using.
-  const FINNHUB_KEY   = 'YOUR_FINNHUB_KEY_HERE';
-  const NEWSAPI_KEY   = 'YOUR_NEWSAPI_KEY_HERE';   // replace with your NewsAPI key
-  const ANTHROPIC_KEY = 'YOUR_ANTHROPIC_KEY_HERE';
+  // ─── API Keys — read once from localStorage at page load ─────────────────────
+  const FINNHUB_KEY   = localStorage.getItem('finnhubKey')   || '';
+  const NEWSAPI_KEY   = localStorage.getItem('newsapiKey')   || '';
+  const ANTHROPIC_KEY = localStorage.getItem('anthropicKey') || '';
+
+  // ─── Settings modal ───────────────────────────────────────────────────────────
+  function openSettings() {
+    document.getElementById('set-anthropic').value = localStorage.getItem('anthropicKey') || '';
+    document.getElementById('set-finnhub').value   = localStorage.getItem('finnhubKey')   || '';
+    document.getElementById('set-newsapi').value   = localStorage.getItem('newsapiKey')   || '';
+    document.getElementById('settingsOverlay').style.display = 'flex';
+  }
+
+  function closeSettings() {
+    document.getElementById('settingsOverlay').style.display = 'none';
+  }
+
+  function saveSettings() {
+    const anthropic = document.getElementById('set-anthropic').value.trim();
+    const finnhub   = document.getElementById('set-finnhub').value.trim();
+    const newsapi   = document.getElementById('set-newsapi').value.trim();
+
+    if (anthropic) localStorage.setItem('anthropicKey', anthropic);
+    else           localStorage.removeItem('anthropicKey');
+
+    if (finnhub)   localStorage.setItem('finnhubKey', finnhub);
+    else           localStorage.removeItem('finnhubKey');
+
+    if (newsapi)   localStorage.setItem('newsapiKey', newsapi);
+    else           localStorage.removeItem('newsapiKey');
+
+    // Reload so the new constants are picked up from localStorage
+    window.location.reload();
+  }
+
+  // Close on Escape (only if keys are already saved — don't let user escape on first run)
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && FINNHUB_KEY && NEWSAPI_KEY) closeSettings();
+  });
 
   // ─── State ───────────────────────────────────────────────────────────────────
   let allArticles  = [];
@@ -603,7 +749,7 @@
         </div>
       </div>`).join('');
   }
-
+  
   // ─── Demo / fallback data ─────────────────────────────────────────────────────
   // gNews → Google News search for a headline so Read More lands on a real article
   // lf → loremflickr: free, topic-matched real photos, no API key required
@@ -1038,7 +1184,12 @@
   });
 
   // ─── Boot ─────────────────────────────────────────────────────────────────────
-  loadNews();
+  if (!FINNHUB_KEY || !NEWSAPI_KEY || !ANTHROPIC_KEY) {
+    // Keys missing — show settings modal before attempting any fetch
+    openSettings();
+  } else {
+    loadNews();
+  }
 </script>
 </body>
 </html>
