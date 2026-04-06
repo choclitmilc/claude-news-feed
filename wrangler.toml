@@ -1,0 +1,8 @@
+name = "finance-proxy"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+# API keys are stored as encrypted secrets — never put real keys here.
+# After deploying, run:
+#   wrangler secret put FINNHUB_KEY
+#   wrangler secret put NEWSAPI_KEY
